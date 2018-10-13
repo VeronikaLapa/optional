@@ -20,12 +20,11 @@ public:
         if (!empty) {
             reinterpret_cast<T *> (element)->~T();
         }
-        empty = true;
     }
 
     Optional(Optional<T> const &other): empty(other.empty){
         if (!other.empty) {
-            new(element) T(reinterpret_cast<T>(other.element));
+            new(element) T(*reinterpret_cast<const T*>(other.element));
         }
     };
     Optional& operator=(const Optional<T>& other) {
