@@ -9,22 +9,21 @@
 template<typename T>
 struct Optional {
 public:
-    Optional() : empty(true){};
+    Optional() : empty(true){}
 
     Optional(T const &val) {
-        new(element) T(val);
+        new(&element) T(val);
         empty = false;
+
     }
 
     ~Optional() {
-        if (!empty) {
-            reinterpret_cast<T *> (element)->~T();
-        }
+        clear();
     }
 
     Optional(Optional<T> const &other): empty(other.empty){
         if (!other.empty) {
-            new(element) T(*reinterpret_cast<const T*>(other.element));
+            new(&element) T(*reinterpret_cast<const T*>(&other.element));
         }
     };
     Optional& operator=(const Optional<T>& other) {
@@ -34,7 +33,7 @@ public:
     }
     void clear() {
         if (!empty) {
-            reinterpret_cast<T *> (element)->~T();
+            reinterpret_cast<T *> (&element)->~T();
         }
         empty = true;
     }
@@ -43,21 +42,39 @@ public:
     }
     T& operator*() {
         assert(!empty);
-        return *reinterpret_cast< T*>(element);
+        return *reinterpret_cast< T*>(&element);
     }
     T* operator->() {
         assert(!empty);
-        return reinterpret_cast< T*>(element);
+        return reinterpret_cast< T*>(&element);
+
+    };
+    const T& operator*() const{
+        assert(!empty);
+        return *reinterpret_cast<const T*>(&element);
+    }
+    const T* operator->() const {
+        assert(!empty);
+        return reinterpret_cast<const T*>(&element);
 
     };
     void Swap(Optional<T>& other) {
-        std::swap(element, other.element);
-        std::swap(empty, other.empty);
+        using std::swap;
+        if (!empty && !other.empty) {
+            swap(*reinterpret_cast< T *>(&element), *reinterpret_cast< T *>(&other.element));
+        } else if (!empty){
+            new(&other.element) T(*reinterpret_cast<const T*>(&element));
+            reinterpret_cast<T *> (&element)->~T();
+        } else if (!other.empty) {
+            new(&element) T(*reinterpret_cast<const T*>(&other.element));
+            reinterpret_cast<T *> (&other.element)->~T();
+        }
+        swap(empty, other.empty);
     }
 
 private:
     bool empty;
-    typename std::aligned_storage<sizeof(T), alignof(T)>::type element[1];
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type element;
 };
 
 template< typename T>
